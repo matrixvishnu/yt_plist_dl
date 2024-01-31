@@ -118,5 +118,9 @@ if __name__ == "__main__":
     url = f"{playlist_endpoint}{playlist_id}"
     # plist_url = 'https://www.youtube.com/playlist?list=PLKpX5mL0zzkjv1wnEmUmENE1rcFnsSIU_'
     # Replace 'YOUR_OUTPUT_PATH' with the desired output directory
-    output_directory = constants.default_playlist_path
-    download_playlist(url)
+    playlist_directory = josn_config_dict["playlist_directory"]
+    if os.path.exists(playlist_directory):
+        output_directory = josn_config_dict["playlist_directory"]
+    else:
+        output_directory = constants.default_playlist_path
+    download_playlist(url, output_directory)
