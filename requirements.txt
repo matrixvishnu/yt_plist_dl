@@ -1,1 +1,3 @@
 pytube
+GitPython
+retry
