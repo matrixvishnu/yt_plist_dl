@@ -29,13 +29,34 @@ def load_json_file(config_file: str = constants.config_file_path) -> dict:
         return config_dict
 
 
+def thumbnail_downloader(video, output_dir):
+    """
+    TODO This is not Implemented yet will Implement later.
+    Args:
+        video:
+        output_dir:
+
+    Returns:
+
+    """
+    thumbnails = video.thumbnail_url
+    thumbnails_file_path = os.path.join(output_directory, f'{video.title}_thumbnail.jpg')
+
+    print(f"Downloading Thumbnails: {video.title}")
+    thumbnails_stream = YouTube(thumbnails)
+    thumbnails_stream.thumbnail_url
+    thumbnails_stream.thumbnail_url.split('?')[0]
+    with open(thumbnails_file_path, 'wb') as thumbnail_file:
+        thumbnail_file.write(thumbnails_stream.thumbnail_url)
+    print(f"\nVideo information downloaded successfully to: {output_directory}")
+
 @retry(delay=2, tries=6)
 def download_yt_video(
         video_url: str,
         playlist_path: str,
         codec_type: str = "audio",
         file_type: str = "mp4",
-        playlist_data: list = None
+        playlist_data: dict = None
 ):
     """
 
@@ -55,15 +76,12 @@ def download_yt_video(
     dest_file_name = f'{video_file}.{file_type}'
     dest_file_path = os.path.join(playlist_path, dest_file_name)
     print(f"checking: {video.title}")
-    if os.path.exists(dest_file_path) and playlist_data:
+    song_data = playlist_data.get(video_title)
+    if os.path.exists(dest_file_path) and song_data:
         actual_file_size = os.path.getsize(dest_file_path)
-        filtered_song = [song for song in playlist_data if song["song_name"] == dest_file_name]
-        if filtered_song:
-            expected_file_size = filtered_song[0]["file_size"]
-        else:
-            expected_file_size = 0
-        if actual_file_size == expected_file_size and expected_file_size != 0:
-            return None
+        expected_file_size = song_data["file_size"]
+        if actual_file_size == expected_file_size:
+            return playlist_data
     streams = video.streams
     if codec_type == "audio":
         stream = streams.get_audio_only()
@@ -71,8 +89,8 @@ def download_yt_video(
         stream = streams.get_highest_resolution()
     print(f"Downloading: {video.title}")
     stream.download(output_path=playlist_path, filename=dest_file_name)
-    title_dict = {"song_name": dest_file_name, "expected_size": stream.filesize}
-    return title_dict
+    playlist_data[video_title] = {"file_size": stream.filesize}
+    return playlist_data
 
 
 def download_playlist(playlist_url, output_path=constants.default_playlist_path, codec_type="audio"):
@@ -98,14 +116,19 @@ def download_playlist(playlist_url, output_path=constants.default_playlist_path,
     # Download each video in the playlist
     url_list = playlist.video_urls
     playlist_data_file = "playlist.json"
+    # playlist_json = {
+    #     "song_title": {"file_size": "filesize"}
+    # }
     playlist_data_path = os.path.join(dest_dir, playlist_data_file)
     if os.path.exists(playlist_data_path):
         playlist_data = load_json_file(playlist_data_path)
     else:
-        playlist_data = []
+        playlist_data = {}
     for video_url in url_list:
-        download_yt_video(video_url, dest_dir)
+        playlist_data = download_yt_video(video_url, dest_dir, playlist_data=playlist_data)
     # download_yt_video(url_list[0], playlist_path)
+    with open(playlist_data_path, "w") as fp:
+        json.dump(playlist_data, fp)
     print(f"\nPlaylist downloaded successfully to: {playlist_path}")
 
 
@@ -121,6 +144,8 @@ if __name__ == "__main__":
     playlist_directory = josn_config_dict["playlist_directory"]
     if os.path.exists(playlist_directory):
         output_directory = josn_config_dict["playlist_directory"]
+        print(f"downloading to {output_directory}")
     else:
         output_directory = constants.default_playlist_path
+        print(f"Could not find the path {playlist_directory} downloading to {output_directory}")
     download_playlist(url, output_directory)
